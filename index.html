@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vanterpool — Financial System Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<style>
+:root {
+  --bg: #0D1117;
+  --card: #161B22;
+  --border: #30363D;
+  --blue: #2F81F7;
+  --green: #3FB950;
+  --amber: #D29922;
+  --red: #F85149;
+  --text: #E6EDF3;
+  --muted: #8B949E;
+  --sidebar: 280px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px; min-height:100vh; }
+
+/* ── STATUS BAR ── */
+#status-bar { height:4px; position:fixed; top:0; left:0; right:0; z-index:200; transition:background .3s; background:var(--amber); }
+
+/* ── HEADER ── */
+#header {
+  position:fixed; top:4px; left:0; right:0; z-index:100;
+  background:#0D1117EE; backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);
+  padding:12px 24px; height:72px;
+  display:flex; align-items:center; gap:20px;
+}
+#header-title h1 { font-size:15px; font-weight:700; }
+#header-title p { font-size:11px; color:var(--muted); margin-top:2px; }
+#xp-section { flex:1; max-width:480px; }
+#xp-label { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:5px; }
+#xp-bar-track { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+#xp-bar-fill { height:100%; background:var(--blue); border-radius:4px; width:0%; transition:width .6s cubic-bezier(.4,0,.2,1); }
+#header-right { display:flex; align-items:center; gap:14px; flex-shrink:0; margin-left:auto; }
+#level-badge { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:6px 12px; text-align:center; }
+#level-name { font-size:11px; color:var(--blue); font-weight:700; }
+#level-num { font-size:10px; color:var(--muted); }
+#pct-block { text-align:center; }
+#completion-pct { font-size:26px; font-weight:800; letter-spacing:-1px; line-height:1; }
+#completion-label { font-size:10px; color:var(--muted); }
+
+/* ── LAYOUT ── */
+#layout { display:flex; margin-top:76px; min-height:calc(100vh - 76px); }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width:var(--sidebar); position:fixed; top:76px; left:0; bottom:0;
+  background:var(--card); border-right:1px solid var(--border);
+  overflow-y:auto; padding:14px 0;
+}
+#level-card {
+  margin:0 12px 14px; background:var(--bg); border:1px solid var(--border);
+  border-radius:8px; padding:12px;
+}
+#level-card .lc-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+#level-card .lc-name { font-size:14px; font-weight:700; color:var(--blue); }
+#level-card .lc-xp { font-size:11px; color:var(--muted); margin:3px 0 8px; }
+#lp-track { height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+#lp-fill { height:100%; background:var(--blue); border-radius:3px; transition:width .5s ease; }
+.wni { padding:8px 14px; cursor:pointer; display:flex; align-items:center; gap:9px; transition:background .15s; }
+.wni:hover { background:rgba(255,255,255,.04); }
+.wni.active { background:rgba(47,129,247,.1); }
+.wni-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.wni-text { flex:1; min-width:0; }
+.wni-num { font-size:10px; color:var(--muted); }
+.wni-title { font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wni-bar-track { height:3px; background:var(--border); border-radius:2px; margin-top:4px; overflow:hidden; }
+.wni-bar-fill { height:100%; border-radius:2px; transition:width .4s ease; }
+#ach-section { margin:14px 12px 0; padding-top:14px; border-top:1px solid var(--border); }
+#ach-title { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
+#ach-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.ach-icon {
+  width:40px; height:40px; border-radius:8px; border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+  cursor:default; transition:all .2s; position:relative;
+}
+.ach-icon.locked { opacity:.2; filter:grayscale(1); }
+.ach-icon.unlocked { border-color:var(--amber); background:rgba(210,153,34,.12); }
+.ach-icon .tip {
+  position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:#1C2128; border:1px solid var(--border); border-radius:6px;
+  padding:6px 8px; font-size:11px; color:var(--text); white-space:normal;
+  pointer-events:none; opacity:0; transition:opacity .15s; z-index:300;
+  width:160px; text-align:center; line-height:1.4;
+}
+.ach-icon:hover .tip { opacity:1; }
+
+/* ── MAIN ── */
+#main { margin-left:var(--sidebar); flex:1; padding:20px 24px; max-width:860px; }
+
+/* ── WEEK CARDS ── */
+.wcard {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; margin-bottom:18px; overflow:hidden; transition:border-color .3s;
+}
+.wcard.current { border-color:var(--blue); border-left:4px solid var(--blue); }
+.wcard.done-week { border-color:var(--green); opacity:.8; }
+.wcard-head {
+  padding:14px 18px; display:flex; align-items:flex-start;
+  justify-content:space-between; border-bottom:1px solid var(--border);
+}
+.wh-left {}
+.wh-wnum { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.wh-title { font-size:15px; font-weight:700; margin:2px 0; }
+.wh-date { font-size:11px; color:var(--muted); }
+.wh-desc { font-size:12px; color:var(--muted); margin-top:4px; max-width:560px; line-height:1.5; }
+.wh-right { display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; padding-left:12px; }
+.curr-badge {
+  font-size:10px; font-weight:700; padding:3px 8px; border-radius:20px;
+  letter-spacing:.5px; white-space:nowrap;
+}
+.curr-badge.blue { background:rgba(47,129,247,.12); border:1px solid var(--blue); color:var(--blue); }
+.curr-badge.green { background:rgba(63,185,80,.12); border:1px solid var(--green); color:var(--green); }
+.wh-xp { font-size:12px; color:var(--muted); }
+
+/* ── TASKS ── */
+.task-list { padding:4px 0; }
+.trow {
+  display:flex; align-items:center; gap:11px;
+  padding:9px 18px; cursor:pointer; transition:background .15s; user-select:none;
+}
+.trow:hover { background:rgba(255,255,255,.03); }
+.trow.done .ttext { text-decoration:line-through; color:var(--muted); }
+.trow.done { opacity:.55; }
+.chkbox {
+  width:18px; height:18px; border:2px solid var(--border); border-radius:4px;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  background:var(--bg); transition:all .2s;
+}
+.trow.done .chkbox { background:var(--green); border-color:var(--green); }
+.chkmark { display:none; color:#fff; font-size:11px; font-weight:900; }
+.trow.done .chkmark { display:block; }
+.ttext { flex:1; font-size:13px; line-height:1.4; }
+.tbadges { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.flag {
+  font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; letter-spacing:.3px; white-space:nowrap;
+}
+.flag.urgent { background:rgba(248,81,73,.12); color:var(--red); border:1px solid rgba(248,81,73,.3); }
+.flag.key { background:rgba(210,153,34,.12); color:var(--amber); border:1px solid rgba(210,153,34,.3); }
+.flag.boss { background:rgba(210,153,34,.18); color:var(--amber); border:1px solid var(--amber); font-size:11px; }
+.xpbadge {
+  font-size:11px; font-weight:600; padding:2px 8px;
+  border-radius:20px; min-width:52px; text-align:center;
+}
+.xpbadge.low { background:rgba(139,148,158,.1); color:var(--muted); }
+.xpbadge.med { background:rgba(47,129,247,.1); color:var(--blue); }
+.xpbadge.high { background:rgba(210,153,34,.1); color:var(--amber); }
+.xpbadge.crit { background:rgba(248,81,73,.1); color:var(--red); }
+
+/* ── WEEK FOOTER ── */
+.wfoot {
+  padding:10px 18px; border-top:1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.wfoot-label { font-size:11px; color:var(--muted); white-space:nowrap; }
+.wfoot-track { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+.wfoot-fill { height:100%; border-radius:3px; transition:width .4s ease; }
+.wfoot-pct { font-size:11px; color:var(--muted); min-width:30px; text-align:right; }
+
+/* ── TOAST ── */
+#toast {
+  position:fixed; bottom:24px; right:24px;
+  background:#1C2128; border:1px solid var(--border); border-radius:8px;
+  padding:12px 16px; font-size:13px; color:var(--text); z-index:400;
+  transform:translateY(12px); opacity:0; transition:all .25s ease;
+  max-width:300px; pointer-events:none;
+}
+#toast.show { opacity:1; transform:translateY(0); }
+
+/* ── LEVEL UP BANNER ── */
+#lvlup {
+  position:fixed; top:76px; left:0; right:0;
+  background:rgba(47,129,247,.08); border-bottom:1px solid var(--blue);
+  padding:10px; text-align:center; z-index:150;
+  font-size:14px; font-weight:700; color:var(--blue);
+  display:none;
+}
+
+/* ── SYNC DOT ── */
+#sync {
+  position:fixed; top:82px; right:14px; z-index:150;
+  font-size:11px; color:var(--muted); display:flex; align-items:center; gap:5px;
+}
+.sdot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+.sdot.spin { background:var(--amber); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── RESET BTN ── */
+#reset-btn {
+  position:fixed; bottom:22px; left:calc(var(--sidebar) + 22px);
+  background:transparent; border:1px solid var(--border); color:var(--muted);
+  font-size:12px; padding:5px 12px; border-radius:6px; cursor:pointer; z-index:100;
+  transition:all .2s;
+}
+#reset-btn:hover { border-color:var(--red); color:var(--red); }
+
+/* ── COMPLETION OVERLAY ── */
+#done-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.82); z-index:500;
+  align-items:center; justify-content:center;
+}
+#done-overlay.show { display:flex; }
+#done-card {
+  background:var(--card); border:1px solid var(--amber); border-radius:16px;
+  padding:48px 40px; text-align:center; max-width:460px;
+}
+#done-card .trophy { font-size:60px; margin-bottom:12px; }
+#done-card h2 { font-size:26px; font-weight:800; color:var(--amber); margin-bottom:8px; }
+#done-card p { color:var(--muted); margin-bottom:24px; line-height:1.65; font-size:13px; }
+#done-card button {
+  background:var(--blue); color:#fff; border:none;
+  padding:10px 28px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ── MOBILE ── */
+@media (max-width:768px) {
+  :root { --sidebar:0px; }
+  #sidebar { display:none; }
+  #main { margin-left:0; padding:14px; }
+  #header { padding:10px 14px; gap:10px; }
+  #xp-section { display:none; }
+  #completion-pct { font-size:20px; }
+  #reset-btn { left:14px; }
+}
+</style>
+</head>
+<body>
+
+<div id="status-bar"></div>
+
+<div id="header">
+  <div id="header-title">
+    <h1>Financial System Setup</h1>
+    <p>Vanterpool Family Enterprises</p>
+  </div>
+  <div id="xp-section">
+    <div id="xp-label">
+      <span id="xp-now">0 XP</span>
+      <span id="xp-max">/ 2,855 XP</span>
+    </div>
+    <div id="xp-bar-track"><div id="xp-bar-fill"></div></div>
+  </div>
+  <div id="header-right">
+    <div id="level-badge">
+      <div id="level-name">Starting Line</div>
+      <div id="level-num">Level 1</div>
+    </div>
+    <div id="pct-block">
+      <div id="completion-pct">0%</div>
+      <div id="completion-label">Complete</div>
+    </div>
+  </div>
+</div>
+
+<div id="sync"><div class="sdot" id="sdot"></div><span id="stext">Saved</span></div>
+
+<div id="layout">
+  <div id="sidebar">
+    <div id="level-card">
+      <div class="lc-label">Current Level</div>
+      <div class="lc-name" id="sb-lname">Starting Line</div>
+      <div class="lc-xp" id="sb-lxp">0 / 300 XP to Level 2</div>
+      <div id="lp-track"><div id="lp-fill" style="width:0%"></div></div>
+    </div>
+    <div id="week-nav"></div>
+    <div id="ach-section">
+      <div id="ach-title">Achievements</div>
+      <div id="ach-grid"></div>
+    </div>
+  </div>
+  <div id="main">
+    <div id="weeks-root"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="lvlup"></div>
+
+<button id="reset-btn" onclick="confirmReset()">↺ Reset Progress</button>
+
+<div id="done-overlay">
+  <div id="done-card">
+    <div class="trophy">🏆</div>
+    <h2>FULLY LOADED</h2>
+    <p>All systems operational. You went from no books, no CPA, and years of back taxes — to a fully organized financial system. That's real work. That's real progress.</p>
+    <button onclick="document.getElementById('done-overlay').classList.remove('show')">Close</button>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL      = 'https://aocevathhhnxjjvgbejj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvY2V2YXRoaGhueGpqdmdiZWpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1ODE1MDYsImV4cCI6MjA5MDE1NzUwNn0.mOu83YO0Rh7-1Y6qu_FY5BWtLmNhitXIuUVVOouH1TE';
+const USER_ID           = 'jason_vanterpool';
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TOTAL_XP = 2855;
+
+const LEVELS = [
+  { n:1, name:'Starting Line',         min:0,    max:300  },
+  { n:2, name:'Rookie Operator',       min:301,  max:600  },
+  { n:3, name:'Accounting Apprentice', min:601,  max:1000 },
+  { n:4, name:'Business Builder',      min:1001, max:1500 },
+  { n:5, name:'Financial Operator',    min:1501, max:2100 },
+  { n:6, name:'Real Estate CFO',       min:2101, max:2600 },
+  { n:7, name:'Fully Loaded 🏆',       min:2601, max:9999 },
+];
+
+const ACHIEVEMENTS = [
+  { id:'first_move',   icon:'👣', name:'First Move',         desc:'Check off any single task' },
+  { id:'closing_day',  icon:'🔑', name:'Closing Day',        desc:'Document the 893 NE 81 St closing proceeds' },
+  { id:'ea_locked',    icon:'📋', name:'EA Locked In',       desc:'Book the EA consultation call' },
+  { id:'qbo_live',     icon:'⚡', name:'QBO Live',           desc:'Complete all QBO setup tasks in Week 2' },
+  { id:'money_mapped', icon:'🗺️', name:'Money Mapped',       desc:'Complete all personal finance setup in Week 3' },
+  { id:'paper_trail',  icon:'📄', name:'Paper Trail',        desc:'Complete the parent transfer log task' },
+  { id:'time_travel',  icon:'⏰', name:'Time Traveler',      desc:'Complete 2023 historical reconstruction' },
+  { id:'going_back',   icon:'📅', name:'Going Back Further', desc:'Complete 2022 historical reconstruction' },
+  { id:'origin_story', icon:'🌱', name:'Origin Story',       desc:'Complete 2021 historical reconstruction' },
+  { id:'ea_handoff',   icon:'🤝', name:'EA Handed Off',      desc:'Complete Week 8 EA engagement tasks' },
+  { id:'almost_free',  icon:'🚀', name:'Almost Free',        desc:'Reach 80% overall completion' },
+  { id:'fully_loaded', icon:'🏆', name:'Fully Loaded',       desc:'Reach 100% — all done' },
+];
+
+const WEEKS = [
+  {
+    id:'w1', n:1, title:'CLOSING + FOUNDATION',
+    dates:'March 27 – April 2, 2026', start:'2026-03-27',
+    desc:'The most urgent week. A property is closing in days. Get your EA on the phone and documents together before the wire lands.',
+    tasks:[
+      { id:'w1t1', t:'Locate original HUD-1 and all improvement receipts for 893 NE 81 St', xp:60, flag:'urgent' },
+      { id:'w1t2', t:'Book EA consultation call before closing date', xp:100, flag:'urgent', ach:'ea_locked' },
+      { id:'w1t3', t:'Document closing proceeds flow — where the wire is going', xp:50, flag:'urgent', ach:'closing_day' },
+      { id:'w1t4', t:'Create QuickBooks Online Accountant master login', xp:25 },
+      { id:'w1t5', t:'Set up 5 active QBO company files (Vanterpool, Pronto, Reliance, HHHL, Lecor Design)', xp:60 },
+      { id:'w1t6', t:'Download all bank statements from BofA, Valley Bank, Navy Federal', xp:30 },
+    ]
+  },
+  {
+    id:'w2', n:2, title:'QBO SETUP + BANK FEEDS',
+    dates:'April 3 – 9, 2026', start:'2026-04-03',
+    desc:'Connect all your accounts so transactions flow in automatically. This is the infrastructure week — build it once, run it forever.',
+    tasks:[
+      { id:'w2t1', t:'Connect all bank accounts to QBO via bank feeds', xp:40, flag:'key' },
+      { id:'w2t2', t:'Install QBO mobile app with fingerprint login', xp:10 },
+      { id:'w2t3', t:'Build chart of accounts for each entity', xp:60, flag:'key' },
+      { id:'w2t4', t:'Set up auto-categorization rules for all recurring vendors and subscriptions', xp:40 },
+      { id:'w2t5', t:'Import last 3 months of transactions across all active entities', xp:50 },
+      { id:'w2t6', t:'Set up Wave for 3 dormant LLCs (Stunty, Lecor Collective, JS Corporate Rentals)', xp:20, ach:'qbo_live' },
+    ]
+  },
+  {
+    id:'w3', n:3, title:'REAL ESTATE TRACKING + PERSONAL LAYER',
+    dates:'April 10 – 16, 2026', start:'2026-04-10',
+    desc:'Layer in Stessa for your properties and Monarch Money for household finances. Set up daily reports and automated digests.',
+    tasks:[
+      { id:'w3t1', t:'Create Stessa account and add 280 NE 88 St as active renovation project', xp:30 },
+      { id:'w3t2', t:'Add incoming fix & flip as placeholder project in Stessa', xp:15 },
+      { id:'w3t3', t:'Set up Monarch Money for personal household finances', xp:20 },
+      { id:'w3t4', t:'Connect personal accounts (joint + personal Navy Federal) to Monarch Money', xp:25 },
+      { id:'w3t5', t:'Document storage unit as partial business deduction against Airbnb entity', xp:20 },
+      { id:'w3t6', t:'Build weekly report template (P&L, Balance Sheet, Cash Flow per entity)', xp:40, flag:'key' },
+      { id:'w3t7', t:'Set up daily uncategorized transaction email digest', xp:30, ach:'money_mapped' },
+    ]
+  },
+  {
+    id:'w4', n:4, title:'BACK-FILING PREP: 2024',
+    dates:'April 17 – 23, 2026', start:'2026-04-17',
+    desc:'Start going backwards. 2024 is the most recent year — get it fully imported and categorized as your baseline.',
+    tasks:[
+      { id:'w4t1', t:'Import all 2024 bank statements into QBO for all entities', xp:60, flag:'key' },
+      { id:'w4t2', t:'Categorize all 2024 transactions across entities', xp:80, flag:'key' },
+      { id:'w4t3', t:'Begin parent transfer log — scan all accounts for BVI parent deposits', xp:50, flag:'key', ach:'paper_trail' },
+      { id:'w4t4', t:'Identify any 1099s issued or received in 2024', xp:30 },
+      { id:'w4t5', t:'Build EA document checklist (what you have vs. still need)', xp:25 },
+    ]
+  },
+  {
+    id:'w5', n:5, title:'BACK-FILING: 2023',
+    dates:'April 24 – 30, 2026', start:'2026-04-24',
+    desc:'One more year back. 2023 may include Airbnb income, wholesaling activity, and more parent transfers across multiple entities.',
+    tasks:[
+      { id:'w5t1', t:'Import all 2023 bank statements into QBO', xp:55 },
+      { id:'w5t2', t:'Categorize all 2023 transactions', xp:75 },
+      { id:'w5t3', t:'Complete parent transfer log entries for 2023', xp:35 },
+      { id:'w5t4', t:'Identify any 1099s for 2023', xp:30 },
+      { id:'w5t5', t:'Flag large unexplained transactions for EA review', xp:25, ach:'time_travel' },
+    ]
+  },
+  {
+    id:'w6', n:6, title:'BACK-FILING: 2022',
+    dates:'May 1 – 7, 2026', start:'2026-05-01',
+    desc:'2022 includes the Pronto Cash Offers property purchase and significant Airbnb activity. Complex year — take it methodically.',
+    tasks:[
+      { id:'w6t1', t:'Import all 2022 bank statements into QBO', xp:55 },
+      { id:'w6t2', t:'Categorize all 2022 transactions', xp:75 },
+      { id:'w6t3', t:'Complete parent transfer log entries for 2022', xp:35 },
+      { id:'w6t4', t:'Document 280 NE 88 St acquisition costs and early renovation expenses for 2022', xp:45, flag:'key' },
+      { id:'w6t5', t:'Identify any 1099s for 2022', xp:30, ach:'going_back' },
+    ]
+  },
+  {
+    id:'w7', n:7, title:'BACK-FILING: 2021',
+    dates:'May 8 – 14, 2026', start:'2026-05-08',
+    desc:'The earliest unfiled year. This is where 893 NE 81 St was acquired. Document the full origin story.',
+    tasks:[
+      { id:'w7t1', t:'Import all 2021 bank statements into QBO', xp:55 },
+      { id:'w7t2', t:'Categorize all 2021 transactions', xp:75 },
+      { id:'w7t3', t:'Complete parent transfer log entries for 2021', xp:35 },
+      { id:'w7t4', t:'Document 893 NE 81 St acquisition in full (purchase price, parent loan, closing costs)', xp:60, flag:'key' },
+      { id:'w7t5', t:'Flag any Stunty LLC or HHHL revenue from 2021', xp:25, ach:'origin_story' },
+    ]
+  },
+  {
+    id:'w8', n:8, title:'ENGAGE YOUR ENROLLED AGENT',
+    dates:'May 15 – 21, 2026', start:'2026-05-15',
+    desc:'The handoff. You now have 4 years of organized books. Find your EA, give them access, and let the professional take over the heavy lifting.',
+    tasks:[
+      { id:'w8t1', t:'Interview and select Enrolled Agent (real estate + delinquent returns specialist)', xp:80, flag:'key' },
+      { id:'w8t2', t:'Grant EA access to QBO', xp:20 },
+      { id:'w8t3', t:'Deliver EA Consultation Brief document', xp:25 },
+      { id:'w8t4', t:'Deliver complete parent transfer log', xp:30 },
+      { id:'w8t5', t:'Confirm Form 3520 strategy for BVI parent loans with EA', xp:70, flag:'urgent' },
+      { id:'w8t6', t:'Confirm retroactive promissory note approach for parent loans with EA', xp:50, ach:'ea_handoff' },
+    ]
+  },
+  {
+    id:'w9', n:9, title:'TAX FILING BEGINS',
+    dates:'May 22 – 28, 2026', start:'2026-05-22',
+    desc:'The EA is working. Your job: be responsive, provide missing docs fast, and set up your forward tax plan so you stay current.',
+    tasks:[
+      { id:'w9t1', t:'Respond to all EA document requests within 24 hours', xp:40 },
+      { id:'w9t2', t:'Review depreciation schedules EA builds for all rental properties', xp:50, flag:'key' },
+      { id:'w9t3', t:'Set up quarterly estimated tax payment schedule for 2026', xp:35 },
+      { id:'w9t4', t:'Open dedicated tax reserve savings account', xp:30 },
+      { id:'w9t5', t:'Sign and submit retroactive promissory notes for parent loans', xp:60, flag:'key' },
+    ]
+  },
+  {
+    id:'w10', n:10, title:'SYSTEMS HARDENING',
+    dates:'May 29 – June 4, 2026', start:'2026-05-29',
+    desc:'While the EA works, lock down the systems so you never end up in this position again. Close the gaps permanently.',
+    tasks:[
+      { id:'w10t1', t:'Open dedicated business credit cards for each active LLC', xp:40 },
+      { id:'w10t2', t:'Set up MileIQ or QBO mileage tracking for all real estate driving', xp:25 },
+      { id:'w10t3', t:'Complete 1099 compliance review for all renovation contractors', xp:45, flag:'key' },
+      { id:'w10t4', t:'Review S-Corp election potential with EA for Reliance Property Buyers and HHHL', xp:50 },
+      { id:'w10t5', t:'Confirm Lecor Design LLC startup cost deduction ($6,725) is properly captured', xp:30 },
+    ]
+  },
+  {
+    id:'w11', n:11, title:'FINAL STRETCH',
+    dates:'June 5 – 11, 2026', start:'2026-06-05',
+    desc:'Returns are being drafted. Review everything carefully before anything gets filed — this is your last chance to catch issues.',
+    tasks:[
+      { id:'w11t1', t:'Review draft 2021 and 2022 returns before EA files', xp:60 },
+      { id:'w11t2', t:'Review draft 2023 and 2024 returns before EA files', xp:60 },
+      { id:'w11t3', t:'Confirm all parent loan transfers are classified correctly across all returns', xp:50, flag:'key' },
+      { id:'w11t4', t:'Set up recurring calendar reminders for quarterly tax payments', xp:20 },
+      { id:'w11t5', t:'Create digital document storage folder structure for each entity', xp:25 },
+    ]
+  },
+  {
+    id:'w12', n:12, title:'COMPLETE',
+    dates:'June 12 – 18, 2026', start:'2026-06-12',
+    desc:'You made it. All returns filed. System running. The version of you that started this had no books, no CPA, a closing in 5 days, and years of back taxes. This version has it all handled.',
+    tasks:[
+      { id:'w12t1', t:'All back returns filed and submitted to IRS', xp:150, flag:'boss' },
+      { id:'w12t2', t:'First quarterly estimated tax payment sent to IRS', xp:40 },
+      { id:'w12t3', t:'Confirm steady-state QBO system is running cleanly', xp:50 },
+      { id:'w12t4', t:'Schedule annual tax planning review for Q4 2026', xp:30 },
+      { id:'w12t5', t:'Take the win 🏆', xp:10 },
+    ]
+  },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let states = {};
+let unlocked = new Set();
+let prevXP = 0;
+let prevLevel = 1;
+let sbClient = null;
+let syncT = null;
+
+// ─── SUPABASE ─────────────────────────────────────────────────────────────────
+function initSB() {
+  if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    try {
+      sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch(e) { console.warn('Supabase unavailable, using localStorage'); }
+  }
+}
+
+async function loadData() {
+  if (sbClient) {
+    try {
+      const { data } = await sbClient.from('tracker_progress')
+        .select('task_states,achievements').eq('id', USER_ID).single();
+      if (data) {
+        states = data.task_states || {};
+        (data.achievements || []).forEach(a => unlocked.add(a));
+        return;
+      }
+    } catch(e) {}
+  }
+  const s = localStorage.getItem('vanterpool_v1');
+  if (s) { const p = JSON.parse(s); states = p.s||{}; (p.a||[]).forEach(a=>unlocked.add(a)); }
+}
+
+function scheduleSave() {
+  setSyncStatus('saving');
+  if (syncT) clearTimeout(syncT);
+  syncT = setTimeout(doSave, 800);
+}
+
+async function doSave() {
+  const payload = { s: states, a: [...unlocked] };
+  localStorage.setItem('vanterpool_v1', JSON.stringify(payload));
+  if (sbClient) {
+    try {
+      await sbClient.from('tracker_progress').upsert({
+        id: USER_ID, task_states: states,
+        achievements: [...unlocked], updated_at: new Date().toISOString()
+      });
+    } catch(e) {}
+  }
+  setSyncStatus('saved');
+}
+
+function setSyncStatus(s) {
+  const dot = document.getElementById('sdot');
+  const txt = document.getElementById('stext');
+  if (s === 'saving') { dot.className='sdot spin'; txt.textContent='Saving…'; }
+  else { dot.className='sdot'; txt.textContent = sbClient ? 'Synced' : 'Saved'; }
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const allTasks = () => WEEKS.flatMap(w => w.tasks);
+const totalXP  = () => allTasks().filter(t => states[t.id]).reduce((s,t) => s+t.xp, 0);
+const weekXP   = w  => w.tasks.filter(t => states[t.id]).reduce((s,t) => s+t.xp, 0);
+const weekTXP  = w  => w.tasks.reduce((s,t) => s+t.xp, 0);
+const doneTasks= () => allTasks().filter(t => states[t.id]).length;
+const getLevel = xp => { for(let i=LEVELS.length-1;i>=0;i--) if(xp>=LEVELS[i].min) return LEVELS[i]; return LEVELS[0]; };
+const xpClass  = xp => xp>=100?'crit':xp>=60?'high':xp>=30?'med':'low';
+
+function currentWeekIdx() {
+  const today = new Date(); let ci = 0;
+  for(let i=0;i<WEEKS.length;i++) { if(today >= new Date(WEEKS[i].start)) ci=i; else break; }
+  return ci;
+}
+
+// ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
+function checkAch(taskId, checked) {
+  const gained = [];
+  const xp = totalXP(); const done = doneTasks(); const tot = allTasks().length;
+
+  if (!unlocked.has('first_move') && done > 0) gained.push('first_move');
+
+  const task = allTasks().find(t => t.id === taskId);
+  if (task?.ach && checked && !unlocked.has(task.ach)) gained.push(task.ach);
+
+  if (WEEKS[1].tasks.every(t=>states[t.id]) && !unlocked.has('qbo_live'))     gained.push('qbo_live');
+  if (WEEKS[2].tasks.every(t=>states[t.id]) && !unlocked.has('money_mapped')) gained.push('money_mapped');
+  if (!unlocked.has('almost_free')  && done/tot >= 0.8) gained.push('almost_free');
+  if (!unlocked.has('fully_loaded') && done === tot)    gained.push('fully_loaded');
+
+  gained.forEach(id => {
+    unlocked.add(id);
+    const a = ACHIEVEMENTS.find(a=>a.id===id);
+    if (a) showToast(`${a.icon} Achievement: ${a.name}`);
+  });
+  if (gained.length) renderAch();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderWeeks(); renderNav(); updateHeader(); updateStatus(); renderAch();
+}
+
+function renderWeeks() {
+  const root = document.getElementById('weeks-root');
+  const ci = currentWeekIdx();
+  root.innerHTML = '';
+  WEEKS.forEach((w,i) => {
+    const wxp = weekXP(w); const wtxp = weekTXP(w);
+    const pct = Math.round(wxp/wtxp*100);
+    const isNow = i===ci;
+    const isDone = w.tasks.every(t=>states[t.id]);
+    const pcolor = isDone ? 'var(--green)' : isNow ? 'var(--blue)' : 'var(--muted)';
+
+    const el = document.createElement('div');
+    el.id = `wcard-${w.id}`;
+    el.className = `wcard${isNow?' current':''}${isDone?' done-week':''}`;
+    el.innerHTML = `
+      <div class="wcard-head">
+        <div class="wh-left">
+          <div class="wh-wnum">WEEK ${w.n}</div>
+          <div class="wh-title">${w.title}</div>
+          <div class="wh-date">${w.dates}</div>
+          <div class="wh-desc">${w.desc}</div>
+        </div>
+        <div class="wh-right">
+          ${isNow ? '<div class="curr-badge blue">▶ CURRENT WEEK</div>' : ''}
+          ${isDone && !isNow ? '<div class="curr-badge green">✓ COMPLETE</div>' : ''}
+          <div class="wh-xp" id="whead-xp-${w.id}">${wxp} / ${wtxp} XP</div>
+        </div>
+      </div>
+      <div class="task-list">
+        ${w.tasks.map(t => renderTask(t)).join('')}
+      </div>
+      <div class="wfoot">
+        <div class="wfoot-label">Progress</div>
+        <div class="wfoot-track"><div class="wfoot-fill" id="wfill-${w.id}" style="width:${pct}%;background:${pcolor}"></div></div>
+        <div class="wfoot-pct" id="wpct-${w.id}">${pct}%</div>
+      </div>`;
+    root.appendChild(el);
+  });
+  root.querySelectorAll('.trow').forEach(r => r.addEventListener('click', () => toggle(r.dataset.id)));
+}
+
+function renderTask(t) {
+  const done = !!states[t.id];
+  const flag = t.flag === 'urgent' ? '<span class="flag urgent">🔴 URGENT</span>'
+             : t.flag === 'key'    ? '<span class="flag key">⚡ KEY</span>'
+             : t.flag === 'boss'   ? '<span class="flag boss">⚔ BOSS BATTLE</span>' : '';
+  return `<div class="trow${done?' done':''}" data-id="${t.id}">
+    <div class="chkbox"><span class="chkmark">✓</span></div>
+    <div class="ttext">${t.t}</div>
+    <div class="tbadges">${flag}<span class="xpbadge ${xpClass(t.xp)}">+${t.xp} XP</span></div>
+  </div>`;
+}
+
+function renderNav() {
+  const nav = document.getElementById('week-nav');
+  const ci = currentWeekIdx();
+  nav.innerHTML = '';
+  WEEKS.forEach((w,i) => {
+    const pct = Math.round(weekXP(w)/weekTXP(w)*100);
+    const isDone = w.tasks.every(t=>states[t.id]);
+    const isNow = i===ci; const isPast = i<ci;
+    const dc = isDone ? 'var(--green)' : isNow ? 'var(--red)' : isPast ? 'var(--amber)' : 'var(--border)';
+    const bc = isDone ? 'var(--green)' : isNow ? 'var(--blue)' : 'var(--muted)';
+    const el = document.createElement('div');
+    el.className = `wni${isNow?' active':''}`;
+    el.innerHTML = `<div class="wni-dot" style="background:${dc}"></div>
+      <div class="wni-text">
+        <div class="wni-num">WEEK ${w.n}</div>
+        <div class="wni-title">${w.title}</div>
+        <div class="wni-bar-track"><div class="wni-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
+      </div>`;
+    el.addEventListener('click', () => document.getElementById(`wcard-${w.id}`).scrollIntoView({behavior:'smooth',block:'start'}));
+    nav.appendChild(el);
+  });
+}
+
+function updateHeader() {
+  const xp = totalXP(); const done = doneTasks(); const tot = allTasks().length;
+  const pct = Math.round(done/tot*100);
+  const lv = getLevel(xp);
+  document.getElementById('xp-now').textContent = `${xp.toLocaleString()} XP`;
+  document.getElementById('xp-bar-fill').style.width = `${(xp/TOTAL_XP)*100}%`;
+  document.getElementById('completion-pct').textContent = `${pct}%`;
+  document.getElementById('level-name').textContent = lv.name;
+  document.getElementById('level-num').textContent = `Level ${lv.n}`;
+
+  const next = LEVELS[lv.n] || lv;
+  const lp = lv.n < 7 ? Math.round((xp-lv.min)/(next.min-lv.min)*100) : 100;
+  document.getElementById('sb-lname').textContent = lv.name;
+  document.getElementById('sb-lxp').textContent = lv.n < 7
+    ? `${xp-lv.min} / ${next.min-lv.min} XP to Level ${lv.n+1}` : 'MAX LEVEL';
+  document.getElementById('lp-fill').style.width = `${lp}%`;
+
+  if (xp > prevXP) {
+    const nlv = getLevel(xp);
+    if (nlv.n > prevLevel) { showLvlUp(nlv.name); prevLevel = nlv.n; }
+  }
+  prevXP = xp;
+}
+
+function updateStatus() {
+  const bar = document.getElementById('status-bar');
+  const ci = currentWeekIdx();
+  const cw = WEEKS[ci];
+  const allDone = cw.tasks.every(t=>states[t.id]);
+  const hasOverdue = WEEKS.slice(0,ci).some(w=>!w.tasks.every(t=>states[t.id]));
+  bar.style.background = hasOverdue ? 'var(--red)' : allDone ? 'var(--green)' : 'var(--amber)';
+}
+
+function renderAch() {
+  const grid = document.getElementById('ach-grid');
+  grid.innerHTML = '';
+  ACHIEVEMENTS.forEach(a => {
+    const el = document.createElement('div');
+    el.className = `ach-icon ${unlocked.has(a.id)?'unlocked':'locked'}`;
+    el.innerHTML = `${a.icon}<div class="tip"><strong>${a.name}</strong><br>${a.desc}</div>`;
+    grid.appendChild(el);
+  });
+}
+
+// ─── TOGGLE ───────────────────────────────────────────────────────────────────
+function toggle(taskId) {
+  states[taskId] = !states[taskId];
+  const checked = states[taskId];
+  const row = document.querySelector(`[data-id="${taskId}"]`);
+  if (row) row.classList.toggle('done', checked);
+
+  const week = WEEKS.find(w => w.tasks.some(t=>t.id===taskId));
+  if (week) {
+    const wxp = weekXP(week); const wtxp = weekTXP(week);
+    const pct = Math.round(wxp/wtxp*100);
+    const isDone = week.tasks.every(t=>states[t.id]);
+    const card = document.getElementById(`wcard-${week.id}`);
+    if (card) {
+      card.classList.toggle('done-week', isDone);
+      const fill = document.getElementById(`wfill-${week.id}`);
+      const pctEl = document.getElementById(`wpct-${week.id}`);
+      const xpEl = document.getElementById(`whead-xp-${week.id}`);
+      if (fill) { fill.style.width=`${pct}%`; fill.style.background=isDone?'var(--green)':'var(--blue)'; }
+      if (pctEl) pctEl.textContent=`${pct}%`;
+      if (xpEl)  xpEl.textContent=`${wxp} / ${wtxp} XP`;
+      if (isDone && checked) {
+        const flash = document.createElement('div');
+        flash.style.cssText='text-align:center;padding:8px;font-size:13px;font-weight:700;color:var(--green);animation:fadeIO 2s ease forwards;';
+        flash.textContent='✓ WEEK COMPLETE';
+        const style = document.createElement('style');
+        style.textContent='@keyframes fadeIO{0%{opacity:0;transform:translateY(4px)}20%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}';
+        document.head.appendChild(style);
+        card.querySelector('.wfoot').before(flash);
+        setTimeout(()=>flash.remove(), 2100);
+      }
+    }
+  }
+
+  checkAch(taskId, checked);
+  updateHeader(); updateStatus(); renderNav();
+
+  if (doneTasks() === allTasks().length) {
+    setTimeout(() => {
+      document.getElementById('done-overlay').classList.add('show');
+      confetti({ particleCount:200, spread:100, origin:{y:0.5} });
+    }, 600);
+  }
+  scheduleSave();
+}
+
+// ─── TOAST / LEVELUP ─────────────────────────────────────────────────────────
+let toastT;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+let lvlT;
+function showLvlUp(name) {
+  const el = document.getElementById('lvlup');
+  el.textContent = `⬆ LEVEL UP — You are now: ${name}`;
+  el.style.display = 'block';
+  if (lvlT) clearTimeout(lvlT);
+  lvlT = setTimeout(()=>{ el.style.display='none'; }, 3200);
+}
+
+function confirmReset() {
+  if (confirm('Reset all progress? This cannot be undone.')) {
+    states={}; unlocked.clear(); prevXP=0; prevLevel=1;
+    doSave(); renderAll();
+    setTimeout(()=>{
+      document.getElementById(`wcard-${WEEKS[currentWeekIdx()].id}`)
+        .scrollIntoView({behavior:'smooth',block:'start'});
+    }, 150);
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  initSB();
+  await loadData();
+  renderAll();
+  prevXP = totalXP();
+  prevLevel = getLevel(prevXP).n;
+  setTimeout(()=>{
+    document.getElementById(`wcard-${WEEKS[currentWeekIdx()].id}`)
+      .scrollIntoView({behavior:'smooth',block:'start'});
+  }, 350);
+}
+init();
+</script>
+</body>
+</html>
