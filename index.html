@@ -60,6 +60,11 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   margin:0 12px 14px; background:var(--bg); border:1px solid var(--border);
   border-radius:8px; padding:12px;
 }
+#avatar-wrap { text-align:center; margin-bottom:10px; }
+#avatar-display { width:92px; height:92px; display:inline-block; }
+#avatar-display svg { width:92px; height:92px; border-radius:50%; box-shadow:0 0 0 2px var(--border); }
+.avatar-pop { animation:avatarPop .5s cubic-bezier(.36,.07,.19,.97); }
+@keyframes avatarPop { 0%,100%{transform:scale(1)} 45%{transform:scale(1.18)} 65%{transform:scale(0.95)} }
 #level-card .lc-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
 #level-card .lc-name { font-size:14px; font-weight:700; color:var(--blue); }
 #level-card .lc-xp { font-size:11px; color:var(--muted); margin:3px 0 8px; }
@@ -236,9 +241,66 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   #completion-pct { font-size:20px; }
   #reset-btn { left:14px; }
 }
+/* ── LOADING SCREEN ── */
+#loader {
+  position:fixed; inset:0; z-index:9999;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  transition:opacity .6s ease, visibility .6s ease;
+}
+#loader-env {
+  position:absolute; inset:0; z-index:0;
+  background:#0D1117 center/cover no-repeat;
+}
+#loader-overlay {
+  position:absolute; inset:0; z-index:1;
+  background:linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.5) 40%, transparent 100%);
+}
+#loader.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+#loader-content {
+  position:relative; z-index:2;
+  display:flex; flex-direction:column; align-items:center;
+  padding-bottom:56px; width:100%;
+  animation: floatIn .7s .2s cubic-bezier(.22,1,.36,1) both;
+}
+#loader-title {
+  font-size:24px; font-weight:800; letter-spacing:-.5px; color:#E6EDF3;
+}
+#loader-sub {
+  font-size:12px; color:rgba(255,255,255,.5); margin-top:4px;
+}
+#loader-bar-wrap {
+  width:200px; height:3px; background:rgba(255,255,255,.15); border-radius:2px;
+  margin-top:24px; overflow:hidden;
+}
+#loader-bar {
+  height:100%; width:0%; background:linear-gradient(90deg,#2F81F7,#3FB950);
+  border-radius:2px; transition:width .05s linear;
+}
+#loader-tip {
+  font-size:11px; color:rgba(255,255,255,.4); margin-top:10px; font-style:italic;
+}
+@keyframes floatIn {
+  from { opacity:0; transform:translateY(18px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+/* ── HEADER AVATAR ── */
+#header-avatar { width:46px; height:46px; flex-shrink:0; border-radius:50%; overflow:hidden; box-shadow:0 0 0 1.5px var(--border); }
+#header-avatar img { width:46px; height:46px; object-fit:cover; object-position:top; display:block; }
 </style>
 </head>
 <body>
+
+<!-- LOADING SCREEN -->
+<div id="loader">
+  <div id="loader-env"></div>
+  <div id="loader-overlay"></div>
+  <div id="loader-content">
+    <div id="loader-title">Vanterpool Financial</div>
+    <div id="loader-sub">Vanterpool Family Enterprises</div>
+    <div id="loader-bar-wrap"><div id="loader-bar"></div></div>
+    <div id="loader-tip">"The people in suits work for you."</div>
+  </div>
+</div>
 
 <div id="status-bar"></div>
 
@@ -255,6 +317,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
     <div id="xp-bar-track"><div id="xp-bar-fill"></div></div>
   </div>
   <div id="header-right">
+    <div id="header-avatar"></div>
     <div id="level-badge">
       <div id="level-name">Starting Line</div>
       <div id="level-num">Level 1</div>
@@ -271,6 +334,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 <div id="layout">
   <div id="sidebar">
     <div id="level-card">
+      <div id="avatar-wrap"><div id="avatar-display"></div></div>
       <div class="lc-label">Current Level</div>
       <div class="lc-name" id="sb-lname">Starting Line</div>
       <div class="lc-xp" id="sb-lxp">0 / 300 XP to Level 2</div>
@@ -487,6 +551,225 @@ const WEEKS = [
   },
 ];
 
+// ─── AVATARS ──────────────────────────────────────────────────────────────────
+// 7 levels: bald Black man, beard goes from massive+scruffy → razor-sharp chinstrap
+const AVATARS = [
+/* L1 Starting Line – stressed, huge wild beard, grey t-shirt */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#3A3A3A"/>
+<path d="M28,92 Q34,83 42,79 L44,88 L50,92 L56,88 L58,79 Q66,83 72,92 L72,110 L28,110Z" fill="#555"/>
+<rect x="43" y="73" width="14" height="12" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M26,56 Q16,68 19,82 Q24,97 35,103 Q42,107 50,107 Q58,107 65,103 Q76,97 81,82 Q84,68 74,56 Q69,54 64,60 Q57,65 50,63 Q43,65 36,60 Q31,54 26,56Z" fill="#111"/>
+<path d="M18,70 Q16,77 19,83" stroke="#2A1A10" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M82,70 Q84,77 81,83" stroke="#2A1A10" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M22,59 Q18,64 20,68" stroke="#2A1A10" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+<path d="M78,59 Q82,64 80,68" stroke="#2A1A10" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+<circle cx="42" cy="44" r="4.5" fill="white"/>
+<circle cx="58" cy="44" r="4.5" fill="white"/>
+<circle cx="43" cy="45" r="2.9" fill="#1C0A00"/>
+<circle cx="59" cy="45" r="2.9" fill="#1C0A00"/>
+<circle cx="41.5" cy="43" r="0.9" fill="white"/>
+<circle cx="57.5" cy="43" r="0.9" fill="white"/>
+<path d="M37,37 Q40,34.5 44,37" stroke="#1C0A00" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+<path d="M56,37 Q60,34.5 63,37" stroke="#1C0A00" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+<path d="M43,66 Q50,63 57,66" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+/* L2 Rookie Operator – large beard, still rough, polo shirt */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#1A3560"/>
+<path d="M26,91 Q32,82 42,78 L45,87 L50,91 L55,87 L58,78 Q68,82 74,91 L74,110 L26,110Z" fill="#2B5EA7"/>
+<path d="M42,78 L45,87 L50,91 L55,87 L58,78 L50,83Z" fill="#1D4080"/>
+<rect x="43" y="73" width="14" height="11" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M29,57 Q20,68 23,81 Q28,95 38,100 Q44,103 50,103 Q56,103 62,100 Q72,95 77,81 Q80,68 71,57 Q66,55 62,61 Q56,65 50,63 Q44,65 38,61 Q34,55 29,57Z" fill="#111"/>
+<path d="M22,70 Q20,76 22,81" stroke="#2A1A10" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<path d="M78,70 Q80,76 78,81" stroke="#2A1A10" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<circle cx="42" cy="44" r="4.3" fill="white"/>
+<circle cx="58" cy="44" r="4.3" fill="white"/>
+<circle cx="43" cy="44.5" r="2.7" fill="#1C0A00"/>
+<circle cx="59" cy="44.5" r="2.7" fill="#1C0A00"/>
+<circle cx="41.5" cy="43" r="0.9" fill="white"/>
+<circle cx="57.5" cy="43" r="0.9" fill="white"/>
+<path d="M37,38 Q40.5,36 44,38" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M56,38 Q59.5,36 63,38" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M43,65 Q50,67 57,65" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+/* L3 Accounting Apprentice – medium beard cleaner edges, button-up */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#2D1848"/>
+<path d="M25,90 Q31,81 41,77 L45,85 L50,90 L55,85 L59,77 Q69,81 75,90 L75,110 L25,110Z" fill="#3B7CC7"/>
+<path d="M41,77 L45,85 L50,90 L55,85 L59,77 L50,82Z" fill="#2A5E9A"/>
+<rect x="43" y="73" width="14" height="10" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M32,58 Q25,66 27,77 Q31,89 40,94 Q45,97 50,97 Q55,97 60,94 Q69,89 73,77 Q75,66 68,58 Q64,56 61,61 Q55,65 50,63 Q45,65 39,61 Q36,56 32,58Z" fill="#111"/>
+<circle cx="42" cy="44" r="4" fill="white"/>
+<circle cx="58" cy="44" r="4" fill="white"/>
+<circle cx="42.5" cy="44.5" r="2.5" fill="#1C0A00"/>
+<circle cx="58.5" cy="44.5" r="2.5" fill="#1C0A00"/>
+<circle cx="41.2" cy="43" r="0.9" fill="white"/>
+<circle cx="57.2" cy="43" r="0.9" fill="white"/>
+<path d="M37,38 Q40.5,37 44,38" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M56,38 Q59.5,37 63,38" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M43,64 Q50,66 57,64" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+/* L4 Business Builder – short-medium neat beard, blazer */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#3A2200"/>
+<path d="M23,90 Q29,81 40,76 L44,85 L48,89 L50,91 L52,89 L56,85 L60,76 Q71,81 77,90 L77,110 L23,110Z" fill="#f0f0f0"/>
+<path d="M23,90 Q29,81 40,76 L44,85 L38,94 L38,110 L23,110Z" fill="#222"/>
+<path d="M77,90 Q71,81 60,76 L56,85 L62,94 L62,110 L77,110Z" fill="#222"/>
+<path d="M40,76 L44,85 L50,91 L56,85 L60,76 L50,81Z" fill="#ddd"/>
+<rect x="43" y="73" width="14" height="9" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M35,59 Q28,67 30,76 Q34,87 42,91 Q46,93 50,93 Q54,93 58,91 Q66,87 70,76 Q72,67 65,59 Q62,57 59,62 Q54,66 50,64 Q46,66 41,62 Q38,57 35,59Z" fill="#111"/>
+<circle cx="42" cy="44" r="4" fill="white"/>
+<circle cx="58" cy="44" r="4" fill="white"/>
+<circle cx="42.5" cy="44.5" r="2.5" fill="#1C0A00"/>
+<circle cx="58.5" cy="44.5" r="2.5" fill="#1C0A00"/>
+<circle cx="41.2" cy="43" r="0.9" fill="white"/>
+<circle cx="57.2" cy="43" r="0.9" fill="white"/>
+<path d="M37,38.5 Q40.5,37.5 44,38.5" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M56,38.5 Q59.5,37.5 63,38.5" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M43,63 Q50,65 57,63" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+/* L5 Financial Operator – short clean beard, dark suit + tie */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#0D2E18"/>
+<path d="M22,90 Q28,81 40,76 L44,84 L48,88 L50,90 L52,88 L56,84 L60,76 Q72,81 78,90 L78,110 L22,110Z" fill="#eee"/>
+<path d="M22,90 Q28,81 40,76 L44,84 L38,93 L38,110 L22,110Z" fill="#111"/>
+<path d="M78,90 Q72,81 60,76 L56,84 L62,93 L62,110 L78,110Z" fill="#111"/>
+<path d="M40,76 L44,84 L50,90 L56,84 L60,76 L50,81Z" fill="#ddd"/>
+<path d="M48,83 L50,87 L52,83 L51,80 L50,78 L49,80Z" fill="#1E3A6E"/>
+<path d="M49.2,87 L50,100 L50.8,87Z" fill="#1E3A6E"/>
+<rect x="43" y="73" width="14" height="9" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M37,60 Q31,67 33,75 Q37,85 44,88 Q47,90 50,90 Q53,90 56,88 Q63,85 67,75 Q69,67 63,60 Q60,58 57,63 Q54,67 50,65 Q46,67 43,63 Q40,58 37,60Z" fill="#111"/>
+<circle cx="42" cy="44" r="3.9" fill="white"/>
+<circle cx="58" cy="44" r="3.9" fill="white"/>
+<circle cx="42.5" cy="44.5" r="2.4" fill="#1C0A00"/>
+<circle cx="58.5" cy="44.5" r="2.4" fill="#1C0A00"/>
+<circle cx="41.2" cy="43" r="0.8" fill="white"/>
+<circle cx="57.2" cy="43" r="0.8" fill="white"/>
+<path d="M37,38 Q40.5,37 44,38" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M56,38 Q59.5,37 63,38" stroke="#1C0A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M43,62 Q50,64 57,62" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+/* L6 Real Estate CFO – very short precision beard, tailored suit + tie */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#3A0F0F"/>
+<path d="M22,90 Q28,81 40,75 L44,83 L48,87 L50,89 L52,87 L56,83 L60,75 Q72,81 78,90 L78,110 L22,110Z" fill="#eee"/>
+<path d="M22,90 Q28,81 40,75 L44,83 L38,93 L38,110 L22,110Z" fill="#0a0a0a"/>
+<path d="M78,90 Q72,81 60,75 L56,83 L62,93 L62,110 L78,110Z" fill="#0a0a0a"/>
+<path d="M40,75 L44,83 L50,89 L56,83 L60,75 L50,80Z" fill="#ddd"/>
+<path d="M48,82 L50,86 L52,82 L51,79 L50,77 L49,79Z" fill="#8B0000"/>
+<path d="M49.2,86 L50,99 L50.8,86Z" fill="#8B0000"/>
+<rect x="43" y="73" width="14" height="9" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M39,61 Q33,67 35,74 Q39,83 46,86 Q48,87 50,87 Q52,87 54,86 Q61,83 65,74 Q67,67 61,61 Q58,59 56,63 Q53,67 50,65 Q47,67 44,63 Q42,59 39,61Z" fill="#111"/>
+<circle cx="42" cy="44" r="3.9" fill="white"/>
+<circle cx="58" cy="44" r="3.9" fill="white"/>
+<circle cx="42.5" cy="44.5" r="2.4" fill="#1C0A00"/>
+<circle cx="58.5" cy="44.5" r="2.4" fill="#1C0A00"/>
+<circle cx="41.2" cy="43" r="0.8" fill="white"/>
+<circle cx="57.2" cy="43" r="0.8" fill="white"/>
+<path d="M37,37.5 Q40.5,36.5 44,37.5" stroke="#1C0A00" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+<path d="M56,37.5 Q59.5,36.5 63,37.5" stroke="#1C0A00" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+<path d="M43,62 Q47,63.5 50,62 Q53,63.5 57,62" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+/* L7 Fully Loaded – razor chinstrap + goatee, perfect black suit, blue tie */
+`<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="52" r="48" fill="#0A1525"/>
+<path d="M22,89 Q28,80 40,75 L44,83 L48,87 L50,89 L52,87 L56,83 L60,75 Q72,80 78,89 L78,110 L22,110Z" fill="#eee"/>
+<path d="M22,89 Q28,80 40,75 L44,83 L38,93 L38,110 L22,110Z" fill="#030303"/>
+<path d="M78,89 Q72,80 60,75 L56,83 L62,93 L62,110 L78,110Z" fill="#030303"/>
+<path d="M40,75 L44,83 L50,89 L56,83 L60,75 L50,80Z" fill="#ddd"/>
+<path d="M48,82 L50,86 L52,82 L51,79 L50,77 L49,79Z" fill="#2F81F7"/>
+<path d="M49.2,86 L50,98 L50.8,86Z" fill="#2F81F7"/>
+<rect x="55" y="81" width="7" height="2.5" rx="1" fill="white" opacity="0.8"/>
+<rect x="43" y="73" width="14" height="8" fill="#7B4F2E"/>
+<ellipse cx="29" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="71" cy="50" rx="4" ry="5.5" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1"/>
+<ellipse cx="50" cy="48" rx="21" ry="26" fill="#7B4F2E" stroke="#1C0A00" stroke-width="1.5"/>
+<ellipse cx="44" cy="31" rx="6" ry="2.5" fill="#9B6640" opacity="0.3"/>
+<path d="M38,61 Q36,63 36.5,68 Q37,73 39,76 Q41.5,80 44,81 L45,79 Q43,76 41.5,72 Q40.5,68 41,64 Q41.5,61.5 43,61Z" fill="#111"/>
+<path d="M62,61 Q64,63 63.5,68 Q63,73 61,76 Q58.5,80 56,81 L55,79 Q57,76 58.5,72 Q59.5,68 59,64 Q58.5,61.5 57,61Z" fill="#111"/>
+<path d="M43,61 Q46.5,59.5 50,59.5 Q53.5,59.5 57,61 Q57,61.5 57,62 Q53.5,60.5 50,60.5 Q46.5,60.5 43,62 Q43,61.5 43,61Z" fill="#111"/>
+<path d="M44,79 Q47,83 50,84 Q53,83 56,79 L55.5,77.5 Q53,81 50,82 Q47,81 44.5,77.5Z" fill="#111"/>
+<circle cx="42" cy="44" r="3.9" fill="white"/>
+<circle cx="58" cy="44" r="3.9" fill="white"/>
+<circle cx="42.5" cy="44.5" r="2.4" fill="#1C0A00"/>
+<circle cx="58.5" cy="44.5" r="2.4" fill="#1C0A00"/>
+<circle cx="41.2" cy="43" r="0.8" fill="white"/>
+<circle cx="57.2" cy="43" r="0.8" fill="white"/>
+<path d="M37,37 Q40.5,35.5 44,37.5" stroke="#1C0A00" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+<path d="M56,37.5 Q59.5,35.5 63,37" stroke="#1C0A00" stroke-width="2.3" fill="none" stroke-linecap="round"/>
+<path d="M44,61.5 Q47,63 50,61.5 Q53,63 56,61.5" stroke="#5C2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`,
+];
+
+// Real image base URL (GitHub raw)
+const IMG_BASE = 'https://raw.githubusercontent.com/jasepoeboy-beep/Financial-Systems-Setup/main/';
+
+// Per-level loader quotes
+const LEVEL_TIPS = [
+  '"One step at a time. Let\'s get organized."',
+  '"You started. That\'s the hardest part."',
+  '"The numbers are starting to make sense."',
+  '"Building the machine that builds the money."',
+  '"Systems first. Freedom follows."',
+  '"Clean books = clean conscience."',
+  '"The people in suits work for you."',
+];
+
+function updateAvatar(lvNum) {
+  const idx = Math.min(lvNum,7) - 1;
+  const svg = AVATARS[idx];
+
+  // Sidebar avatar (SVG)
+  const el = document.getElementById('avatar-display');
+  if (el && el.innerHTML !== svg) {
+    el.innerHTML = svg;
+    el.classList.remove('avatar-pop');
+    void el.offsetWidth;
+    el.classList.add('avatar-pop');
+  }
+
+  // Header avatar — torso cutout image, no background
+  const hdr = document.getElementById('header-avatar');
+  if (hdr) hdr.innerHTML = `<img src="${IMG_BASE}header-${idx+1}.png" alt="Level ${idx+1}">`;
+
+  // Loader — full scene background image
+  const loaderEnv = document.getElementById('loader-env');
+  if (loaderEnv) {
+    loaderEnv.style.backgroundImage = `url('${IMG_BASE}loader-${idx+1}.jpg')`;
+    loaderEnv.style.backgroundSize = 'cover';
+    loaderEnv.style.backgroundPosition = 'center top';
+  }
+
+  // Loader quote
+  const tip = document.getElementById('loader-tip');
+  if (tip) tip.textContent = LEVEL_TIPS[idx];
+}
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let states = {};
 let unlocked = new Set();
@@ -675,6 +958,7 @@ function updateHeader() {
   document.getElementById('completion-pct').textContent = `${pct}%`;
   document.getElementById('level-name').textContent = lv.name;
   document.getElementById('level-num').textContent = `Level ${lv.n}`;
+  updateAvatar(lv.n);
 
   const next = LEVELS[lv.n] || lv;
   const lp = lv.n < 7 ? Math.round((xp-lv.min)/(next.min-lv.min)*100) : 100;
@@ -786,16 +1070,39 @@ function confirmReset() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+// ─── LOADER ───────────────────────────────────────────────────────────────────
+function runLoader(onDone) {
+  const bar = document.getElementById('loader-bar');
+  const loader = document.getElementById('loader');
+  // Quote + environment update happens inside updateAvatar() once level is known
+  let pct = 0;
+  const tick = setInterval(() => {
+    pct = Math.min(pct + Math.random()*12 + 3, 92);
+    bar.style.width = pct + '%';
+    if (pct >= 92) clearInterval(tick);
+  }, 80);
+  onDone().then(() => {
+    bar.style.transition = 'width .3s ease';
+    bar.style.width = '100%';
+    setTimeout(() => {
+      loader.classList.add('hidden');
+      setTimeout(() => loader.remove(), 700);
+    }, 350);
+  });
+}
+
 async function init() {
   initSB();
-  await loadData();
-  renderAll();
-  prevXP = totalXP();
-  prevLevel = getLevel(prevXP).n;
+  await runLoader(async () => {
+    await loadData();
+    renderAll();
+    prevXP = totalXP();
+    prevLevel = getLevel(prevXP).n;
+  });
   setTimeout(()=>{
-    document.getElementById(`wcard-${WEEKS[currentWeekIdx()].id}`)
-      .scrollIntoView({behavior:'smooth',block:'start'});
-  }, 350);
+    const card = document.getElementById(`wcard-${WEEKS[currentWeekIdx()].id}`);
+    if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
+  }, 400);
 }
 init();
 </script>
