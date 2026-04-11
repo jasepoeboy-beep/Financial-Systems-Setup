@@ -801,12 +801,12 @@ function updateAvatar(lvNum) {
 
   // Header avatar — torso cutout image, no background
   const hdr = document.getElementById('header-avatar');
-  if (hdr) hdr.innerHTML = `<img src="${IMG_BASE}loader-${idx+1}.jpg" alt="Level ${idx+1}">`;
+  if (hdr) hdr.innerHTML = `<img src="${IMG_BASE}loader-${idx+1}.png" alt="Level ${idx+1}">`;
 
   // Loader — full scene background image
   const loaderEnv = document.getElementById('loader-env');
   if (loaderEnv) {
-    loaderEnv.style.backgroundImage = `url('${IMG_BASE}loader-${idx+1}.jpg')`;
+    loaderEnv.style.backgroundImage = `url('${IMG_BASE}loader-${idx+1}.png')`;
     loaderEnv.style.backgroundSize = 'cover';
     loaderEnv.style.backgroundPosition = 'center top';
   }
@@ -1112,8 +1112,8 @@ function showLvlUpCinematic(oldLvl, newLvl, name) {
   const nameEl  = document.getElementById('lvlup-cine-name');
 
   // Set images
-  oldImg.style.backgroundImage = `url('${IMG_BASE}loader-${oldLvl}.jpg')`;
-  newImg.style.backgroundImage = `url('${IMG_BASE}loader-${newLvl}.jpg')`;
+  oldImg.style.backgroundImage = `url('${IMG_BASE}loader-${oldLvl}.png')`;
+  newImg.style.backgroundImage = `url('${IMG_BASE}loader-${newLvl}.png')`;
   nameEl.textContent = name;
 
   // Reset state
