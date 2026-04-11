@@ -189,6 +189,47 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   display:none;
 }
 
+/* ── LEVEL UP CINEMATIC ── */
+#lvlup-cinematic {
+  position:fixed; inset:0; z-index:9999;
+  background:#000; display:none; overflow:hidden;
+}
+#lvlup-old-img {
+  position:absolute; inset:0;
+  background-size:cover; background-position:center top;
+  will-change:transform;
+}
+#lvlup-new-img {
+  position:absolute; inset:0;
+  background-size:cover; background-position:center top;
+  transform:translateY(-100%);
+  will-change:transform;
+}
+#lvlup-cine-text {
+  position:absolute; bottom:14%; left:0; right:0;
+  text-align:center; color:#fff;
+  font-size:2rem; font-weight:900; letter-spacing:.04em;
+  text-shadow:0 2px 24px rgba(0,0,0,.9);
+  opacity:0; transform:translateY(20px);
+  pointer-events:none;
+}
+#lvlup-cine-text span {
+  display:block; font-size:1.3rem;
+  color:#D29922; margin-top:6px; font-weight:700;
+}
+@keyframes lvlShake {
+  0%,100% { transform:translate(0,0) rotate(0deg); }
+  10%  { transform:translate(-9px,-5px) rotate(-.5deg); }
+  20%  { transform:translate(9px, 5px) rotate(.5deg); }
+  30%  { transform:translate(-11px,3px) rotate(-.3deg); }
+  40%  { transform:translate(11px,-3px) rotate(.3deg); }
+  50%  { transform:translate(-7px, 4px) rotate(-.2deg); }
+  60%  { transform:translate(7px,-4px) rotate(.2deg); }
+  70%  { transform:translate(-4px, 2px) rotate(-.1deg); }
+  80%  { transform:translate(4px,-2px) rotate(.1deg); }
+  90%  { transform:translate(-2px, 1px) rotate(0deg); }
+}
+
 /* ── SYNC DOT ── */
 #sync {
   position:fixed; top:82px; right:14px; z-index:150;
@@ -353,6 +394,11 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 
 <div id="toast"></div>
 <div id="lvlup"></div>
+<div id="lvlup-cinematic">
+  <div id="lvlup-old-img"></div>
+  <div id="lvlup-new-img"></div>
+  <div id="lvlup-cine-text">⬆ LEVEL UP<span id="lvlup-cine-name"></span></div>
+</div>
 
 <button id="reset-btn" onclick="confirmReset()">↺ Reset Progress</button>
 
@@ -755,7 +801,7 @@ function updateAvatar(lvNum) {
 
   // Header avatar — torso cutout image, no background
   const hdr = document.getElementById('header-avatar');
-  if (hdr) hdr.innerHTML = `<img src="${IMG_BASE}header-${idx+1}.png" alt="Level ${idx+1}">`;
+  if (hdr) hdr.innerHTML = `<img src="${IMG_BASE}loader-${idx+1}.jpg" alt="Level ${idx+1}">`;
 
   // Loader — full scene background image
   const loaderEnv = document.getElementById('loader-env');
@@ -969,7 +1015,7 @@ function updateHeader() {
 
   if (xp > prevXP) {
     const nlv = getLevel(xp);
-    if (nlv.n > prevLevel) { showLvlUp(nlv.name); prevLevel = nlv.n; }
+    if (nlv.n > prevLevel) { showLvlUpCinematic(prevLevel, nlv.n, nlv.name); showLvlUp(nlv.name); prevLevel = nlv.n; }
   }
   prevXP = xp;
 }
@@ -1056,6 +1102,63 @@ function showLvlUp(name) {
   el.style.display = 'block';
   if (lvlT) clearTimeout(lvlT);
   lvlT = setTimeout(()=>{ el.style.display='none'; }, 3200);
+}
+
+function showLvlUpCinematic(oldLvl, newLvl, name) {
+  const overlay = document.getElementById('lvlup-cinematic');
+  const oldImg  = document.getElementById('lvlup-old-img');
+  const newImg  = document.getElementById('lvlup-new-img');
+  const text    = document.getElementById('lvlup-cine-text');
+  const nameEl  = document.getElementById('lvlup-cine-name');
+
+  // Set images
+  oldImg.style.backgroundImage = `url('${IMG_BASE}loader-${oldLvl}.jpg')`;
+  newImg.style.backgroundImage = `url('${IMG_BASE}loader-${newLvl}.jpg')`;
+  nameEl.textContent = name;
+
+  // Reset state
+  oldImg.style.cssText  += ';transform:translateY(0);transition:none;animation:none;';
+  newImg.style.cssText  += ';transform:translateY(-100%);transition:none;';
+  text.style.cssText    += ';opacity:0;transform:translateY(20px);transition:none;';
+  overlay.style.opacity    = '1';
+  overlay.style.transition = 'none';
+  overlay.style.display    = 'block';
+
+  // 1 — shake the old image after a beat        [0.30s]
+  setTimeout(() => {
+    oldImg.style.animation = 'lvlShake 0.65s ease';
+  }, 300);
+
+  // 2 — new image drops in from top             [1.10s]
+  setTimeout(() => {
+    newImg.style.transition = 'transform 0.45s cubic-bezier(0.2,0,0.4,1)';
+    newImg.style.transform  = 'translateY(0)';
+  }, 1100);
+
+  // 3 — old image gets knocked off the bottom   [1.55s]
+  setTimeout(() => {
+    oldImg.style.animation  = 'none';
+    oldImg.style.transition = 'transform 0.45s cubic-bezier(0.4,0,1,1)';
+    oldImg.style.transform  = 'translateY(100%)';
+  }, 1550);
+
+  // 4 — level-up text fades in                 [2.00s]
+  setTimeout(() => {
+    text.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    text.style.opacity    = '1';
+    text.style.transform  = 'translateY(0)';
+  }, 2000);
+
+  // 5 — fade out overlay                       [4.35s → ends at 5.00s]
+  setTimeout(() => {
+    overlay.style.transition = 'opacity 0.65s ease';
+    overlay.style.opacity    = '0';
+  }, 4350);
+
+  // 6 — hide overlay completely                [5.00s]
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 5000);
 }
 
 function confirmReset() {
