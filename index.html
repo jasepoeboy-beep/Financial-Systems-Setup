@@ -325,8 +325,50 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   to   { opacity:1; transform:translateY(0); }
 }
 /* ── HEADER AVATAR ── */
-#header-avatar { width:46px; height:46px; flex-shrink:0; border-radius:50%; overflow:hidden; box-shadow:0 0 0 1.5px var(--border); }
+#header-avatar { width:46px; height:46px; flex-shrink:0; border-radius:50%; overflow:hidden; box-shadow:0 0 0 1.5px var(--border); cursor:pointer; }
 #header-avatar img { width:46px; height:46px; object-fit:cover; object-position:top; display:block; }
+
+/* ── IMAGE LIGHTBOX ── */
+#img-lightbox {
+  position:fixed; inset:0; z-index:10000;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  animation:lbFadeIn .2s ease;
+}
+#img-lightbox.open { display:flex; }
+@keyframes lbFadeIn { from{opacity:0} to{opacity:1} }
+#img-lightbox-inner {
+  position:relative;
+  width:min(100vw, 430px);
+  max-height:100dvh;
+  display:flex; align-items:center; justify-content:center;
+}
+#img-lightbox-inner img {
+  width:100%;
+  max-height:100dvh;
+  object-fit:contain;
+  object-position:top;
+  display:block;
+  border-radius:0;
+}
+@media (min-width:431px) {
+  #img-lightbox-inner img {
+    border-radius:16px;
+    box-shadow:0 8px 48px rgba(0,0,0,.7);
+  }
+}
+#img-lightbox-close {
+  position:fixed; top:16px; right:16px;
+  width:36px; height:36px;
+  background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.2);
+  border-radius:50%; color:#fff; font-size:18px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; z-index:10001;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  transition:background .15s;
+}
+#img-lightbox-close:hover { background:rgba(255,255,255,.15); }
 </style>
 </head>
 <body>
@@ -392,6 +434,12 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   </div>
 </div>
 
+<div id="img-lightbox">
+  <div id="img-lightbox-inner">
+    <img id="img-lightbox-img" src="" alt="Level Image">
+  </div>
+  <button id="img-lightbox-close" onclick="closeLightbox()">✕</button>
+</div>
 <div id="toast"></div>
 <div id="lvlup"></div>
 <div id="lvlup-cinematic">
@@ -801,7 +849,11 @@ function updateAvatar(lvNum) {
 
   // Header avatar — torso cutout image, no background
   const hdr = document.getElementById('header-avatar');
-  if (hdr) hdr.innerHTML = `<img src="${IMG_BASE}loader-${idx+1}.png" alt="Level ${idx+1}">`;
+  if (hdr) {
+    const imgSrc = `${IMG_BASE}loader-${idx+1}.png`;
+    hdr.innerHTML = `<img src="${imgSrc}" alt="Level ${idx+1}">`;
+    hdr.onclick = () => openLightbox(imgSrc);
+  }
 
   // Loader — full scene background image
   const loaderEnv = document.getElementById('loader-env');
@@ -1094,6 +1146,24 @@ function showToast(msg) {
   if (toastT) clearTimeout(toastT);
   toastT = setTimeout(()=>el.classList.remove('show'), 3500);
 }
+
+// ─── IMAGE LIGHTBOX ──────────────────────────────────────────────────────────
+function openLightbox(src) {
+  const lb = document.getElementById('img-lightbox');
+  const img = document.getElementById('img-lightbox-img');
+  img.src = src;
+  lb.classList.add('open');
+  document.addEventListener('keydown', lbKeyClose);
+}
+function closeLightbox() {
+  document.getElementById('img-lightbox').classList.remove('open');
+  document.removeEventListener('keydown', lbKeyClose);
+}
+function lbKeyClose(e) { if (e.key === 'Escape') closeLightbox(); }
+// close on backdrop click
+document.getElementById('img-lightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
 
 let lvlT;
 function showLvlUp(name) {
