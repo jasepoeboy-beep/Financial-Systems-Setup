@@ -333,31 +333,42 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   position:fixed; inset:0; z-index:10000;
   display:none; align-items:center; justify-content:center;
   background:rgba(0,0,0,0.85);
-  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
   animation:lbFadeIn .2s ease;
 }
 #img-lightbox.open { display:flex; }
 @keyframes lbFadeIn { from{opacity:0} to{opacity:1} }
+
+/* Mobile — full screen edge to edge */
 #img-lightbox-inner {
   position:relative;
-  width:min(100vw, 430px);
-  max-height:100dvh;
-  display:flex; align-items:center; justify-content:center;
+  width:100vw;
+  height:100dvh;
+  overflow:hidden;
 }
 #img-lightbox-inner img {
   width:100%;
-  max-height:100dvh;
-  object-fit:contain;
+  height:100%;
+  object-fit:cover;
   object-position:top;
   display:block;
   border-radius:0;
 }
-@media (min-width:431px) {
+
+/* Desktop — phone-sized portrait frame, centered in blurred backdrop */
+@media (min-width:600px) {
+  #img-lightbox-inner {
+    width:390px;
+    height:min(84vh, 760px);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 12px 60px rgba(0,0,0,.8);
+  }
   #img-lightbox-inner img {
-    border-radius:16px;
-    box-shadow:0 8px 48px rgba(0,0,0,.7);
+    border-radius:20px;
   }
 }
+
 #img-lightbox-close {
   position:fixed; top:16px; right:16px;
   width:36px; height:36px;
